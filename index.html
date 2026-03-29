@@ -15,8 +15,8 @@
     button { margin: 2px; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .save { background: purple; color: white; }
     .delete { background: black; color: white; }
+    .cancel { background: red; color: white; }
     .sky { background: skyblue; color: white; }
-    .low { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -51,61 +51,142 @@
   <button class="sky" onclick="addProduct()">Add</button>
 </div>
 
-<div style="text-align:center; margin-bottom:10px;">
-  <button class="sky" onclick="downloadPDF()">Download PDF</button>
-</div>
-
 <div id="list"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
+let totalAmountSaved = parseFloat(localStorage.getItem("totalAmountSaved")) || 0;
 
-function autoSave(){ localStorage.setItem("products", JSON.stringify(products)); }
-
-function calculateTotalAmount(){
-  let total = 0;
-  products.forEach(p=>{
-    let discount = parseFloat(p.discount||0);
-    let totalPerProduct = (parseFloat(p.price||0) * parseInt(p.quantitySold||0)) - discount;
-    if(totalPerProduct<0) totalPerProduct = 0;
-    total += totalPerProduct;
-  });
-  document.getElementById("totalAmount").innerText = total.toFixed(2);
+// Save all data to localStorage
+function autoSave(){ 
+  localStorage.setItem("products", JSON.stringify(products));
+  localStorage.setItem("totalAmountSaved", totalAmountSaved);
 }
 
-function render(){
+// Calculate dashboard totals
+function updateDashboard(){
   let totalStock=0, totalSold=0, totalReturn=0;
-  let html = `<table>
-    <tr>
-      <th>Name</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
-      <th>Price</th><th>Quantity Sold</th><th>Discount (৳)</th><th>Total</th><th>Actions</th>
-    </tr>`;
-
-  products.forEach((p,i)=>{
+  products.forEach(p=>{
     totalStock += p.stock;
     totalSold += p.sold;
     totalReturn += p.return;
-    let discount = parseFloat(p.discount||0);
-    let totalPerProduct = (parseFloat(p.price||0) * parseInt(p.quantitySold||0)) - discount;
-    if(totalPerProduct<0) totalPerProduct = 0;
+  });
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
+}
 
-    html += `<tr>
-      <td><input type="text" value="${p.color}" onchange="updateColor(${i},this.value)"></td>
-      <td><input type="text" value="${p.size}" onchange="updateSize(${i},this.value)"></td>
+// Add new product
+function addProduct(){
+  let color=document.getElementById("newColor").value;
+  let size=document.getElementById("newSize").value;
+  let stock=parseInt(document.getElementById("newStock").value)||0;
+  let price=parseFloat(document.getElementById("newPrice").value)||0;
+  if(!color || !size){ alert("Enter Name and Size"); return; }
+  products.push({color,size,stock,sold:0,return:0,price,qtySold:0,discount:0});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  autoSave(); render();
+}
+
+// Sell quantity
+function sell(i, qty){
+  qty = parseInt(qty)||0;
+  if(qty>products[i].stock){ alert("Not enough stock"); return; }
+  products[i].stock -= qty;
+  products[i].sold += qty;
+  products[i].qtySold += qty;
+  updateProductTotal(i);
+}
+
+// Return quantity
+function addReturn(i, qty){
+  qty = parseInt(qty)||0;
+  products[i].stock += qty;
+  products[i].return += qty;
+  products[i].qtySold -= qty;
+  updateProductTotal(i);
+}
+
+// Update total for a product (Price × Quantity Sold − Discount)
+function updateProductTotal(i){
+  let p = products[i];
+  let total = (p.price * p.qtySold) - (p.discount||0);
+  p.total = total>0 ? total : 0;
+  recalcTotalAmount();
+  autoSave(); render();
+}
+
+// Recalculate Total Amount across all products
+function recalcTotalAmount(){
+  totalAmountSaved = 0;
+  products.forEach(p=>{ totalAmountSaved += p.total || 0; });
+}
+
+// Delete product
+function deleteProduct(i){
+  products.splice(i,1);
+  recalcTotalAmount();
+  autoSave();
+  render();
+}
+
+// Cancel calculation changes for a product
+function cancelCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  recalcTotalAmount();
+  autoSave();
+  render();
+}
+
+// Save Price, Qty Sold, Discount (reset calculation fields)
+function saveCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  autoSave();
+  render();
+}
+
+// Render table
+function render(){
+  let html=`<table>
+    <tr>
+      <th>Name</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Quantity Sold</th><th>Discount</th><th>Total</th><th>Actions</th>
+    </tr>`;
+  products.forEach((p,i)=>{
+    html+=`<tr>
+      <td>${p.color}</td>
+      <td>${p.size}</td>
       <td>${p.stock}</td>
       <td>${p.sold}</td>
       <td>${p.return}</td>
-      <td><input type="number" value="${p.price}" min="0" onchange="updatePrice(${i},this.value)"></td>
-      <td><input type="number" value="${p.quantitySold||0}" min="0" max="${p.stock + (p.quantitySold||0)}" onchange="updateQuantity(${i},this.value)"></td>
-      <td><input type="number" value="${p.discount||0}" min="0" onchange="updateDiscount(${i},this.value)"></td>
-      <td>${totalPerProduct.toFixed(2)}</td>
+      <td><input type="number" value="${p.price}" oninput="products[${i}].price=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td><input type="number" value="${p.qtySold}" oninput="sell(${i}, this.value)"></td>
+      <td><input type="number" value="${p.discount}" oninput="products[${i}].discount=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td>${(p.total||0).toFixed(2)}</td>
       <td>
-        <button class="save" onclick="saveProduct(${i})">Save</button>
+        <button class="save" onclick="saveCalc(${i})">Save</button>
         <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+        <button class="cancel" onclick="cancelCalc(${i})">Cancel</button>
       </td>
     </tr>`;
   });
+  html += "</table>";
+  document.getElementById("list").innerHTML = html;
+  updateDashboard();
+}
+
+render();
+</script>
+</body>
+</html>  });
 
   html += `</table>`;
   document.getElementById("list").innerHTML = html;
