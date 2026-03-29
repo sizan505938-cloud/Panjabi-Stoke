@@ -160,6 +160,84 @@ function render(){
     html+=`<tr>
       <td><input type="text" value="${p.color}" oninput="products[${i}].color=this.value"></td>
       <td><input type="text" value="${p.size}" oninput="products[${i}].size=this.value"></td>
+      <td><input type="number" value="${p.stock}" oninput="products[${i}].stock=parseInt(this.value)||0"></td>
+      <td><input type="number" value="${p.sold}" oninput="products[${i}].sold=parseInt(this.value)||0; products[${i}].qtySold=products[${i}].sold; updateProductTotal(${i})"></td>
+      <td><input type="number" value="${p.return}" oninput="returnInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.price}" oninput="products[${i}].price=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td><input type="number" value="${p.qtySold}" oninput="sellInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.discount}" oninput="products[${i}].discount=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td>${(p.total||0).toFixed(2)}</td>
+      <td>
+        <button class="save" onclick="saveCalc(${i})">Save</button>
+        <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+        <button class="cancel" onclick="cancelCalc(${i})">Cancel</button>
+      </td>
+    </tr>`;
+  });
+  html+="</table>";
+  document.getElementById("list").innerHTML = html;
+  updateDashboard();
+  autoSave();
+}
+
+render();
+</script>
+</body>
+</html>
+// Save calculation
+function saveCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  autoSave(); render();
+}
+
+// Cancel calculation
+function cancelCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  autoSave(); render();
+}
+
+// Delete product
+function deleteProduct(i){
+  products.splice(i,1);
+  recalcTotalAmount();
+  autoSave();
+  render();
+}
+
+// Sell quantity input
+function sellInput(i, val){
+  val = parseInt(val)||0;
+  if(val>products[i].stock) { alert("Not enough stock"); return; }
+  products[i].qtySold = val;
+  products[i].sold = val; // Update sold
+  products[i].stock -= val;
+  updateProductTotal(i);
+}
+
+// Return quantity input
+function returnInput(i, val){
+  val = parseInt(val)||0;
+  products[i].return = val;
+  products[i].stock += val; // Add back to stock
+  products[i].sold -= val; // Reduce sold
+  updateProductTotal(i);
+}
+
+// Render table
+function render(){
+  let html=`<table>
+    <tr>
+      <th>Name</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Qty Sold</th><th>Discount</th><th>Total</th><th>Actions</th>
+    </tr>`;
+  products.forEach((p,i)=>{
+    html+=`<tr>
+      <td><input type="text" value="${p.color}" oninput="products[${i}].color=this.value"></td>
+      <td><input type="text" value="${p.size}" oninput="products[${i}].size=this.value"></td>
       <td><input type="number" value="${p.stock}" oninput="products[${i}].stock
 // Save calculation
 function saveCalc(i){
