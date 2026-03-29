@@ -5,15 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <style>
-    body {
-      font-family: Arial;
-      padding: 10px;
-      background: #eef2f3;
-    }
-
-    h2 {
-      text-align: center;
-    }
+    body { font-family: Arial; padding: 10px; background: #eef2f3; }
+    h2 { text-align: center; }
 
     .dashboard {
       display: flex;
@@ -50,12 +43,9 @@
     .sell { background: green; color: white; }
     .return { background: orange; color: white; }
     .resell { background: blue; color: white; }
+    .cancel { background: red; color: white; }
 
-    .low {
-      color: red;
-      font-weight: bold;
-    }
-
+    .low { color: red; font-weight: bold; }
   </style>
 </head>
 
@@ -82,12 +72,12 @@
 
 <script>
 
-// 🔥 Load from storage
+// 🔥 তোমার data সেট করা
 let products = JSON.parse(localStorage.getItem("products")) || [
-  {color:"Green", size:"M", stock:1, sold:0, return:0},
-  {color:"Green", size:"L", stock:1, sold:0, return:0},
-  {color:"Black", size:"L", stock:3, sold:0, return:0},
-  {color:"Pink", size:"XL", stock:2, sold:0, return:0}
+  {color:"Green", size:"M", stock:1, sold:5, return:0},
+  {color:"Green", size:"L", stock:1, sold:6, return:0},
+  {color:"Black", size:"L", stock:3, sold:10, return:1},
+  {color:"Pink", size:"XL", stock:3, sold:6, return:0}
 ];
 
 function save(){
@@ -106,6 +96,42 @@ function render(){
     totalSold += p.sold;
     totalReturn += p.return;
 
+    html += `
+      <div class="card">
+        <b>${p.color} - ${p.size}</b><br>
+        Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
+        | Sold: ${p.sold} 
+        | Return: ${p.return}
+        <br>
+        <button class="sell" onclick="sell(${i})">Sell</button>
+        <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Resell</button>
+        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+      </div>
+    `;
+  });
+
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+
+  save();
+}
+
+// 🔻 Actions
+
+function sell(i){
+  if(products[i].stock > 0){
+    products[i].stock--;
+    products[i].sold++;
+    render();
+  } else {
+    alert("No Stock!");
+  }
+}
+
+function addReturn(i
     html += `
       <div class="card">
         <b>${p.color} - ${p.size}</b><br>
