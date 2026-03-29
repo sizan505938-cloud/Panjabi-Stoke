@@ -3,109 +3,187 @@
 <head>
   <title>Panjabi Business Manager</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial; padding: 10px; background: #eef2f3; }
-    h2 { text-align: center; margin-bottom: 20px; }
+    h2 { text-align: center; }
     .dashboard { display: flex; justify-content: space-around; margin-bottom: 15px; }
-    .box { background: white; padding: 10px; border-radius: 10px; width: 22%; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .box { background: white; padding: 10px; border-radius: 10px; width: 22%; text-align: center; }
+    table { width: 100%; border-collapse: collapse; background: white; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
-    th { background: #f4f4f4; }
-    input { width: 60px; padding: 4px; }
-    button { margin: 2px; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    input { width: 70px; }
+    button { padding: 5px; border: none; border-radius: 4px; cursor: pointer; }
     .save { background: purple; color: white; }
     .delete { background: black; color: white; }
     .cancel { background: red; color: white; }
     .sky { background: skyblue; color: white; }
-    .pdfBtn { background: green; color: white; margin-top:10px; padding:8px 12px; }
+    .pdfBtn { background: green; color: white; margin-left:10px; }
   </style>
-  <!-- jsPDF library CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
 <h2>Panjabi Business Manager</h2>
 
-<div class="dashboard">
+<div class="dashboard" id="dashboardDiv">
   <div class="box">
-    <div>Total Stock</div>
-    <b id="totalStock">0</b>
+    Stock<br>
+    <input id="totalStock" type="number" step="any" readonly>
   </div>
   <div class="box">
-    <div>Total Sold</div>
-    <b id="totalSold">0</b>
+    Sold<br>
+    <input id="totalSold" type="number" step="any" readonly>
   </div>
   <div class="box">
-    <div>Total Return</div>
-    <b id="totalReturn">0</b>
+    Return<br>
+    <input id="totalReturn" type="number" step="any" readonly>
   </div>
   <div class="box">
-    <div>Total Amount</div>
-    <b id="totalAmount">0</b>
+    Amount<br>
+    <input id="totalAmount" type="number" step="any" readonly>
+  </div>
+  <div class="box">
+    <button id="editDashboard" class="sky">Edit</button>
+    <button id="saveDashboard" class="save" style="display:none">Save</button>
+    <button class="pdfBtn" onclick="downloadPDF()">Download PDF</button>
   </div>
 </div>
 
-<div class="box" style="margin-bottom:15px;">
-  <b>Add New Product</b><br>
-  Name: <input type="text" id="newColor" placeholder="Color/Name">
-  Size: <input type="text" id="newSize" placeholder="Size">
-  Stock: <input type="number" id="newStock" placeholder="0" min="0">
-  Price: <input type="number" id="newPrice" placeholder="Price" min="0">
+<div class="box">
+  Name <input id="newColor">
+  Size <input id="newSize">
+  Stock <input type="number" id="newStock" step="any">
+  Price <input type="number" id="newPrice" step="any">
   <button class="sky" onclick="addProduct()">Add</button>
 </div>
 
 <div id="list"></div>
 
-<button class="pdfBtn" onclick="downloadPDF()">Download PDF</button>
-
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
-let totalAmountSaved = parseFloat(localStorage.getItem("totalAmountSaved")) || 0;
 
-function autoSave(){ 
-  localStorage.setItem("products", JSON.stringify(products));
-  localStorage.setItem("totalAmountSaved", totalAmountSaved);
+function autoSave() { localStorage.setItem("products", JSON.stringify(products)); }
+
+function recalcTotalAmount() {
+  return products.reduce((sum,p)=>sum + (p.total||0) + (p.currentTotal||0),0);
 }
 
-function updateDashboard(){
-  let totalStock=0, totalSold=0, totalReturn=0;
-  products.forEach(p=>{
-    totalStock += parseInt(p.stock);
-    totalSold += parseInt(p.sold);
-    totalReturn += parseInt(p.return);
-  });
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
+function updateDashboard() {
+  let stock=0, sold=0, ret=0;
+  products.forEach(p=>{ stock += p.stock||0; sold+=p.sold||0; ret+=p.return||0; });
+  document.getElementById("totalStock").value = stock;
+  document.getElementById("totalSold").value = sold;
+  document.getElementById("totalReturn").value = ret;
+  document.getElementById("totalAmount").value = recalcTotalAmount().toFixed(2);
 }
 
-function addProduct(){
-  let color=document.getElementById("newColor").value.trim();
-  let size=document.getElementById("newSize").value.trim();
-  let stock=parseInt(document.getElementById("newStock").value)||0;
-  let price=parseFloat(document.getElementById("newPrice").value)||0;
-  if(!color || !size){ alert("Enter Name and Size"); return; }
-  products.push({color,size,stock,sold:0,return:0,price,qtySold:0,discount:0,total:0});
-  document.getElementById("newColor").value="";
-  document.getElementById("newSize").value="";
-  document.getElementById("newStock").value="";
-  document.getElementById("newPrice").value="";
-  recalcDashboardTotal();
-  autoSave(); render();
+document.getElementById("editDashboard").onclick = ()=>{
+  ["totalStock","totalSold","totalReturn","totalAmount"].forEach(id=>document.getElementById(id).removeAttribute("readonly"));
+  document.getElementById("editDashboard").style.display="none";
+  document.getElementById("saveDashboard").style.display="inline-block";
+};
+
+document.getElementById("saveDashboard").onclick = ()=>{
+  // Proportional update (optional, simple approach)
+  ["totalStock","totalSold","totalReturn","totalAmount"].forEach(id=>document.getElementById(id).setAttribute("readonly",true));
+  document.getElementById("editDashboard").style.display="inline-block";
+  document.getElementById("saveDashboard").style.display="none";
+  autoSave();
+  render();
+};
+
+function addProduct() {
+  let color=newColor.value.trim(), size=newSize.value.trim();
+  let stock=parseFloat(newStock.value)||0, price=parseFloat(newPrice.value)||0;
+  if(!color || !size){ alert("Enter name & size"); return; }
+  products.push({color,size,stock,price,qtySold:0,return:0,discount:0,total:0,currentTotal:0,sold:0});
+  newColor.value=""; newSize.value=""; newStock.value=""; newPrice.value="";
+  render();
 }
 
 function updateProductTotal(i){
   let p = products[i];
-  p.total = (parseFloat(p.price)||0) * (parseInt(p.qtySold)||0) - (parseFloat(p.discount)||0);
-  if(p.total < 0) p.total = 0;
-  recalcDashboardTotal();
+  let qty = parseFloat(p.qtySold)||0;
+  let disc = parseFloat(p.discount)||0;
+  let price = parseFloat(p.price)||0;
+  p.currentTotal = (price*qty)-disc;
+  if(p.currentTotal<0)p.currentTotal=0;
+  updateDashboard();
 }
 
-function recalcDashboardTotal(){
-  totalAmountSaved=0;
-  products.forEach(p=> totalAmountSaved += parseFloat(p.total||0));
-  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
+function sellInput(i,e){
+  let val=parseFloat(e.target.value)||0; let p=products[i];
+  if(val>p.stock+p.return){ alert("Not enough stock"); return;}
+  p.qtySold=val; updateProductTotal(i);
+}
+function returnInput(i,e){
+  let val=parseFloat(e.target.value)||0; let p=products[i];
+  let diff=val-(p.return||0); p.return=val; p.stock+=diff; p.sold-=diff; if(p.sold<0)p.sold=0;
+  p.total-=diff*(p.price||0); if(p.total<0)p.total=0; updateDashboard(); autoSave();
+}
+function priceInput(i,e){ products[i].price=parseFloat(e.target.value)||0; updateProductTotal(i);}
+function discountInput(i,e){ products[i].discount=parseFloat(e.target.value)||0; updateProductTotal(i); }
+
+function saveCalc(i){
+  let p=products[i]; let sale=(p.price*p.qtySold)-(p.discount||0); if(sale<0)sale=0;
+  p.total=(p.total||0)+sale; p.stock-=p.qtySold; p.sold+=p.qtySold; p.qtySold=0; p.return=0; p.discount=0; p.currentTotal=0;
+  render(); autoSave();
+}
+function cancelCalc(i){ let p=products[i]; p.qtySold=0;p.return=0;p.discount=0;p.currentTotal=0; render();}
+function deleteProduct(i){ products.splice(i,1); render(); autoSave();}
+
+function render(){
+  let html=`<table>
+    <tr><th>Name</th><th>Size</th><th>Stock</th><th>Qty Sold</th><th>Return</th>
+    <th>Price</th><th>Discount</th><th>Total</th><th>Action</th></tr>`;
+  products.forEach((p,i)=>{
+    let showTotal=(p.total||0)+(p.currentTotal||0);
+    html+=`<tr>
+      <td><input type="text" value="${p.color}" oninput="products[${i}].color=this.value"></td>
+      <td><input type="text" value="${p.size}" oninput="products[${i}].size=this.value"></td>
+      <td><input type="number" step="any" value="${p.stock}" oninput="products[${i}].stock=parseFloat(this.value)||0;updateDashboard()"></td>
+      <td><input type="number" step="any" value="${p.qtySold}" oninput="sellInput(${i},event)"></td>
+      <td><input type="number" step="any" value="${p.return}" oninput="returnInput(${i},event)"></td>
+      <td><input type="number" step="any" value="${p.price}" oninput="priceInput(${i},event)"></td>
+      <td><input type="number" step="any" value="${p.discount}" oninput="discountInput(${i},event)"></td>
+      <td><input type="number" step="any" value="${showTotal.toFixed(2)}" oninput="p.currentTotal=parseFloat(this.value)||0;updateDashboard()"></td>
+      <td>
+        <button class="save" onclick="saveCalc(${i})">Save</button>
+        <button class="cancel" onclick="cancelCalc(${i})">Cancel</button>
+        <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+      </td>
+    </tr>`;
+  });
+  html+="</table>";
+  list.innerHTML=html;
+  updateDashboard();
+  autoSave();
+}
+
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+  doc.setFontSize(12);
+  doc.text("Panjabi Business Manager", 10, 10);
+
+  // Dashboard
+  let dashText = `Stock: ${totalStock.value}, Sold: ${totalSold.value}, Return: ${totalReturn.value}, Amount: ${totalAmount.value}`;
+  doc.text(dashText, 10, 20);
+
+  // Table
+  let rows=[];
+  products.forEach(p=>{
+    rows.push([p.color,p.size,p.stock,p.sold,p.return,p.price,p.discount,((p.total||0)+(p.currentTotal||0)).toFixed(2)]);
+  });
+  doc.autoTable({ head:[['Name','Size','Stock','Sold','Return','Price','Discount','Total']], body:rows, startY:30 });
+  doc.save('panjabi_business.pdf');
+}
+
+render();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</body>
+</html>  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
   localStorage.setItem("totalAmountSaved", totalAmountSaved);
 }
 
