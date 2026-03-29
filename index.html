@@ -17,7 +17,10 @@
     .delete { background: black; color: white; }
     .cancel { background: red; color: white; }
     .sky { background: skyblue; color: white; }
+    .pdfBtn { background: green; color: white; margin-top:10px; padding:8px 12px; }
   </style>
+  <!-- jsPDF library CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -53,17 +56,17 @@
 
 <div id="list"></div>
 
+<button class="pdfBtn" onclick="downloadPDF()">Download PDF</button>
+
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
 let totalAmountSaved = parseFloat(localStorage.getItem("totalAmountSaved")) || 0;
 
-// Save all data
 function autoSave(){ 
   localStorage.setItem("products", JSON.stringify(products));
   localStorage.setItem("totalAmountSaved", totalAmountSaved);
 }
 
-// Update dashboard totals
 function updateDashboard(){
   let totalStock=0, totalSold=0, totalReturn=0;
   products.forEach(p=>{
@@ -74,38 +77,7 @@ function updateDashboard(){
   document.getElementById("totalStock").innerText = totalStock;
   document.getElementById("totalSold").innerText = totalSold;
   document.getElementById("totalReturn").innerText = totalReturn;
-  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
-}
-
-// Add new product
-function addProduct(){
-  let color=document.getElementById("newColor").value.trim();
-  let size=document.getElementById("newSize").value.trim();
-  let stock=parseInt(document.getElementById("newStock").value)||0;
-  let price=parseFloat(document.getElementById("newPrice").value)||0;
-  if(!color || !size){ alert("Enter Name and Size"); return; }
-  products.push({color,size,stock,sold:0,return:0,price,qtySold:0,discount:0,total:0});
-  document.getElementById("newColor").value="";
-  document.getElementById("newSize").value="";
-  document.getElementById("newStock").value="";
-  document.getElementById("newPrice").value="";
-  recalcTotalAmount();
-  autoSave(); render();
-}
-
-// Update Total for a product
-function updateProductTotal(i){
-  let p = products[i];
-  p.total = (p.price * p.qtySold) - (p.discount||0);
-  if(p.total < 0) p.total = 0;
-  recalcTotalAmount();
-}
-
-// Recalculate dashboard total amount
-function recalcTotalAmount(){
-  totalAmountSaved=0;
-  products.forEach(p=>totalAmountSaved += parseFloat(p.total||0));
-}
+  document.getElementById("totalAmount}
 
 // Save calculation
 function saveCalc(i){
