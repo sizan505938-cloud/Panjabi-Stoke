@@ -31,6 +31,12 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
 
+    input {
+      width: 60px;
+      padding: 5px;
+      margin-top: 5px;
+    }
+
     button {
       margin: 3px;
       padding: 6px 10px;
@@ -44,6 +50,7 @@
     .return { background: orange; color: white; }
     .resell { background: blue; color: white; }
     .cancel { background: red; color: white; }
+    .save { background: purple; color: white; }
 
     .low { color: red; font-weight: bold; }
   </style>
@@ -72,7 +79,7 @@
 
 <script>
 
-// 🔥 তোমার data সেট করা
+// 🔥 Initial Data
 let products = JSON.parse(localStorage.getItem("products")) || [
   {color:"Green", size:"M", stock:1, sold:5, return:0},
   {color:"Green", size:"L", stock:1, sold:6, return:0},
@@ -80,10 +87,13 @@ let products = JSON.parse(localStorage.getItem("products")) || [
   {color:"Pink", size:"XL", stock:3, sold:6, return:0}
 ];
 
+// 🔻 Save function
 function save(){
   localStorage.setItem("products", JSON.stringify(products));
+  alert("Saved Successfully ✅");
 }
 
+// 🔻 Render UI
 function render(){
   let html = "";
   let totalStock = 0;
@@ -99,14 +109,21 @@ function render(){
     html += `
       <div class="card">
         <b>${p.color} - ${p.size}</b><br>
+
         Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
         | Sold: ${p.sold} 
         | Return: ${p.return}
         <br>
+
+        <input type="number" id="stockInput${i}" placeholder="New Stock">
+
+        <br>
+
         <button class="sell" onclick="sell(${i})">Sell</button>
         <button class="return" onclick="addReturn(${i})">Return</button>
         <button class="resell" onclick="resell(${i})">Resell</button>
         <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+        <button class="save" onclick="updateStock(${i})">Set Stock</button>
       </div>
     `;
   });
@@ -115,43 +132,6 @@ function render(){
   document.getElementById("totalStock").innerText = totalStock;
   document.getElementById("totalSold").innerText = totalSold;
   document.getElementById("totalReturn").innerText = totalReturn;
-
-  save();
-}
-
-// 🔻 Actions
-
-function sell(i){
-  if(products[i].stock > 0){
-    products[i].stock--;
-    products[i].sold++;
-    render();
-  } else {
-    alert("No Stock!");
-  }
-}
-
-function addReturn(i
-    html += `
-      <div class="card">
-        <b>${p.color} - ${p.size}</b><br>
-        Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
-        | Sold: ${p.sold} 
-        | Return: ${p.return}
-        <br>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Resell</button>
-      </div>
-    `;
-  });
-
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-
-  save();
 }
 
 // 🔻 Actions
@@ -182,6 +162,26 @@ function resell(i){
   }
 }
 
+function cancelSale(i){
+  if(products[i].sold > 0){
+    products[i].sold--;
+    products[i].stock++;
+    render();
+  } else {
+    alert("No sale to cancel!");
+  }
+}
+
+// 🔥 Manual Stock Change
+function updateStock(i){
+  let newStock = document.getElementById("stockInput"+i).value;
+  if(newStock !== ""){
+    products[i].stock = parseInt(newStock);
+    render();
+  }
+}
+
+// First Load
 render();
 
 </script>
