@@ -6,62 +6,19 @@
   <style>
     body { font-family: Arial; padding: 10px; background: #eef2f3; }
     h2 { text-align: center; margin-bottom: 20px; }
-
-    .dashboard {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 15px;
-    }
-
-    .box {
-      background: white;
-      padding: 10px;
-      border-radius: 10px;
-      width: 22%;
-      text-align: center;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-
-    th {
-      background: #f4f4f4;
-    }
-
-    input {
-      width: 60px;
-      padding: 4px;
-    }
-
-    button {
-      margin: 2px;
-      padding: 5px 8px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
+    .dashboard { display: flex; justify-content: space-around; margin-bottom: 15px; }
+    .box { background: white; padding: 10px; border-radius: 10px; width: 22%; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #f4f4f4; }
+    input { width: 60px; padding: 4px; }
+    button { margin: 2px; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .sell { background: green; color: white; }
     .return { background: orange; color: white; }
     .resell { background: blue; color: white; }
     .cancel { background: red; color: white; }
     .save { background: purple; color: white; }
     .sky { background: skyblue; color: white; }
-
     .low { color: red; font-weight: bold; }
   </style>
 </head>
@@ -97,8 +54,13 @@
   <button class="sky" onclick="addProduct()">Add</button>
 </div>
 
+<div style="text-align:center; margin-bottom:10px;">
+  <button class="sky" onclick="downloadPDF()">Download PDF</button>
+</div>
+
 <div id="list"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
 
@@ -106,6 +68,120 @@ function autoSave(){ localStorage.setItem("products", JSON.stringify(products));
 
 function calculateTotalAmount(){
   let total = 0;
+  products.forEach(p=>{
+    let price = parseFloat(p.price)||0;
+    let totalPerProduct = p.stock * price;
+    total += totalPerProduct;
+  });
+  document.getElementById("totalAmount").innerText = total.toFixed(2);
+}
+
+function render(){
+  let totalStock=0, totalSold=0, totalReturn=0;
+  let html = `<table>
+    <tr>
+      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Total</th><th>Actions</th>
+    </tr>`;
+
+  products.forEach((p,i)=>{
+    totalStock += p.stock;
+    totalSold += p.sold;
+    totalReturn += p.return;
+
+    let price = parseFloat(p.price)||0;
+    let totalPerProduct = p.stock * price;
+
+    html += `<tr>
+      <td>${p.color}</td>
+      <td>${p.size}</td>
+      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
+      <td>${p.sold}</td>
+      <td>${p.return}</td>
+      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
+      <td>${totalPerProduct.toFixed(2)}</td>
+      <td>
+        <button class="sell" onclick="sell(${i})">Sell</button>
+        <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Return→Sold</button>
+        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+        <button class="save" onclick="updateStock(${i}); updatePrice(${i});">Save</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</table>`;
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  calculateTotalAmount();
+}
+
+// Actions
+function sell(i){ if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); } else alert("No Stock!"); }
+function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
+function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
+function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
+
+function updateStock(i){
+  let val=document.getElementById("stockInput"+i).value;
+  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); calculateTotalAmount(); }
+}
+function updatePrice(i){
+  let val=document.getElementById("priceInput"+i).value;
+  products[i].price=parseFloat(val) || 0;
+  render(); autoSave(); calculateTotalAmount();
+}
+
+// Add Product
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value) || 0;
+  let price=parseFloat(document.getElementById("newPrice").value) || 0;
+
+  if(color==="" || size===""){ alert("Color and Size required!"); return; }
+
+  products.push({color,size,stock,sold:0,return:0,price});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  render(); autoSave();
+}
+
+// PDF Download
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 10;
+  doc.setFontSize(12);
+  doc.text("Panjabi Business Manager Report", 10, y);
+  y += 10;
+
+  products.forEach(p=>{
+    let price = parseFloat(p.price)||0;
+    let totalPerProduct = p.stock * price;
+    let line = `${p.color} - ${p.size} | Stock: ${p.stock} | Sold: ${p.sold} | Return: ${p.return} | Price: ${price.toFixed(2)} | Total: ${totalPerProduct.toFixed(2)}`;
+    doc.text(line, 10, y);
+    y += 7;
+    if(y > 280){ doc.addPage(); y = 10; }
+  });
+
+  let total = products.reduce((acc,p)=>{
+    return acc + (p.stock * parseFloat(p.price||0));
+  },0);
+  y += 10;
+  doc.text("Total Amount: " + total.toFixed(2), 10, y);
+
+  doc.save("Panjabi_Report.pdf");
+}
+
+render();
+</script>
+</body>
+</html>  let total = 0;
   products.forEach(p=>{
     let price = parseFloat(p.price) || 0;
     let discount = parseFloat(p.discount) || 0;
