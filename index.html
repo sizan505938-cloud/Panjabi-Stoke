@@ -93,7 +93,7 @@ function render(){
     html += `<tr>
       <td><input type="text" value="${p.color}" onchange="updateColor(${i},this.value)"></td>
       <td><input type="text" value="${p.size}" onchange="updateSize(${i},this.value)"></td>
-      <td><input type="number" value="${p.stock}" min="0" onchange="updateStock(${i},this.value)"></td>
+      <td>${p.stock}</td>
       <td>${p.sold}</td>
       <td>${p.return}</td>
       <td><input type="number" value="${p.price}" min="0" onchange="updatePrice(${i},this.value)"></td>
@@ -106,6 +106,89 @@ function render(){
       </td>
     </tr>`;
   });
+
+  html += `</table>`;
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  calculateTotalAmount();
+}
+
+// Update functions
+function updateColor(i,val){ products[i].color = val; autoSave(); }
+function updateSize(i,val){ products[i].size = val; autoSave(); }
+function updatePrice(i,val){ products[i].price = parseFloat(val)||0; autoSave(); render(); calculateTotalAmount();}
+function updateDiscount(i,val){ products[i].discount = parseFloat(val)||0; autoSave(); render(); calculateTotalAmount();}
+function updateQuantity(i,val){
+  let quantity = parseInt(val)||0;
+  if(quantity > products[i].stock + (products[i].quantitySold||0)) quantity = products[i].stock + (products[i].quantitySold||0);
+  let diff = quantity - (products[i].quantitySold||0);
+  products[i].quantitySold = quantity;
+  products[i].stock -= diff;
+  if(products[i].stock<0) products[i].stock=0;
+  products[i].sold += diff; // Sold automatically update
+  autoSave(); render(); calculateTotalAmount();
+}
+
+// Save resets Price, Quantity Sold, Discount
+function saveProduct(i){
+  products[i].price = 0;
+  products[i].quantitySold = 0;
+  products[i].discount = 0;
+  autoSave(); render(); calculateTotalAmount();
+}
+
+// Add product
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value)||0;
+  let price=parseFloat(document.getElementById("newPrice").value)||0;
+  if(color==="" || size===""){ alert("Name and Size required!"); return; }
+  products.push({color,size,stock,sold:0,return:0,price,quantitySold:0,discount:0});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  autoSave(); render();
+}
+
+// Delete
+function deleteProduct(i){
+  if(confirm("Are you sure to delete this product?")){
+    products.splice(i,1);
+    autoSave(); render();
+  }
+}
+
+// PDF Download
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 10;
+  doc.setFontSize(12);
+  doc.text("Panjabi Business Manager Report",10,y);
+  y+=10;
+  products.forEach(p=>{
+    let total = (parseFloat(p.price||0)*parseInt(p.quantitySold||0)) - parseFloat(p.discount||0);
+    if(total<0) total=0;
+    let line = `${p.color} - ${p.size} | Stock: ${p.stock} | Sold: ${p.sold} | Return: ${p.return} | Price: ${p.price.toFixed(2)} | Qty Sold: ${p.quantitySold} | Discount: ${p.discount} | Total: ${total.toFixed(2)}`;
+    doc.text(line,10,y);
+    y+=7;
+    if(y>280){ doc.addPage(); y=10; }
+  });
+  let totalAmount = products.reduce((acc,p)=>acc + (parseFloat(p.price||0)*parseInt(p.quantitySold||0)) - parseFloat(p.discount||0),0);
+  if(totalAmount<0) totalAmount=0;
+  y+=10;
+  doc.text("Total Amount: "+totalAmount.toFixed(2),10,y);
+  doc.save("Panjabi_Report.pdf");
+}
+
+render();
+</script>
+</body>
+</html>  });
 
   html += `</table>`;
   document.getElementById("list").innerHTML = html;
