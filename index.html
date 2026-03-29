@@ -88,7 +88,6 @@
   </div>
 </div>
 
-<!-- New Product Input -->
 <div class="box" style="margin-bottom:15px;">
   <b>Add New Product</b><br>
   Color: <input type="text" id="newColor" placeholder="Color">
@@ -106,6 +105,107 @@ let products = JSON.parse(localStorage.getItem("products")) || [];
 function autoSave(){ localStorage.setItem("products", JSON.stringify(products)); }
 
 function calculateTotalAmount(){
+  let total = 0;
+  products.forEach(p=>{
+    let price = parseFloat(p.price) || 0;
+    let discount = parseFloat(p.discount) || 0;
+    let finalAmount = (p.stock * price) - discount;
+    total += finalAmount;
+  });
+  document.getElementById("totalAmount").innerText = total.toFixed(2);
+}
+
+function render(){
+  let totalStock=0, totalSold=0, totalReturn=0;
+  let html = `<table>
+    <tr>
+      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Discount/Account</th><th>Final Amount</th><th>Actions</th>
+    </tr>`;
+
+  products.forEach((p,i)=>{
+    totalStock += p.stock;
+    totalSold += p.sold;
+    totalReturn += p.return;
+
+    let price = parseFloat(p.price)||0;
+    let discount = parseFloat(p.discount)||0;
+    let finalAmount = (p.stock * price) - discount;
+
+    html += `<tr>
+      <td>${p.color}</td>
+      <td>${p.size}</td>
+      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
+      <td>${p.sold}</td>
+      <td>${p.return}</td>
+      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
+      <td><input type="number" id="discountInput${i}" value="${p.discount||0}" placeholder="Discount/Account" onchange="updateDiscount(${i})"></td>
+      <td>${finalAmount.toFixed(2)}</td>
+      <td>
+        <button class="sell" onclick="sell(${i})">Sell</button>
+        <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Return→Sold</button>
+        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateDiscount(${i});">Save</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</table>`;
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  calculateTotalAmount();
+}
+
+// Actions
+function sell(i){
+  if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); }
+  else alert("No Stock!");
+}
+function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
+function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
+function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
+
+function updateStock(i){
+  let val=document.getElementById("stockInput"+i).value;
+  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); calculateTotalAmount(); }
+}
+function updatePrice(i){
+  let val=document.getElementById("priceInput"+i).value;
+  products[i].price=parseFloat(val) || 0;
+  render(); autoSave();
+  calculateTotalAmount();
+}
+function updateDiscount(i){
+  let val=document.getElementById("discountInput"+i).value;
+  products[i].discount=parseFloat(val)||0;
+  render(); autoSave();
+  calculateTotalAmount();
+}
+
+// Add Product
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value) || 0;
+  let price=parseFloat(document.getElementById("newPrice").value) || 0;
+
+  if(color==="" || size===""){ alert("Color and Size required!"); return; }
+
+  products.push({color,size,stock,sold:0,return:0,price,discount:0});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  render(); autoSave();
+}
+
+render();
+</script>
+</body>
+</html>function calculateTotalAmount(){
   let total = 0;
   products.forEach(p=>{
     let price = parseFloat(p.price)||0;
