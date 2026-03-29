@@ -9,7 +9,7 @@
     .dashboard { display: flex; justify-content: space-around; margin-bottom: 15px; }
     .box { background: white; padding: 10px; border-radius: 10px; width: 22%; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
     th { background: #f4f4f4; }
     input { width: 60px; padding: 4px; }
     button { margin: 2px; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -91,21 +91,126 @@ function addProduct(){
   document.getElementById("newSize").value="";
   document.getElementById("newStock").value="";
   document.getElementById("newPrice").value="";
-  recalcTotalAmount();
+  recalcDashboardTotal();
   autoSave(); render();
 }
 
 function updateProductTotal(i){
   let p = products[i];
-  p.total = (p.price * p.qtySold) - (p.discount||0);
+  p.total = (parseFloat(p.price)||0) * (parseInt(p.qtySold)||0) - (parseFloat(p.discount)||0);
   if(p.total < 0) p.total = 0;
-  recalcTotalAmount();
+  recalcDashboardTotal();
 }
 
-function recalcTotalAmount(){
+function recalcDashboardTotal(){
   totalAmountSaved=0;
-  products.forEach(p=>totalAmountSaved += parseFloat(p.total||0));
+  products.forEach(p=> totalAmountSaved += parseFloat(p.total||0));
+  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
+  localStorage.setItem("totalAmountSaved", totalAmountSaved);
 }
+
+function saveCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  recalcDashboardTotal();
+  autoSave(); render();
+}
+
+function cancelCalc(i){
+  products[i].qtySold=0;
+  products[i].discount=0;
+  products[i].total=0;
+  recalcDashboardTotal();
+  autoSave(); render();
+}
+
+function deleteProduct(i){
+  products.splice(i,1);
+  recalcDashboardTotal();
+  autoSave();
+  render();
+}
+
+// Incremental Sell
+function sellInput(i, val){
+  val = parseInt(val)||0;
+  if(val > products[i].stock){
+    alert("Not enough stock");
+    return;
+  }
+  products[i].qtySold += val;
+  products[i].stock -= val;
+  products[i].sold += val;
+  updateProductTotal(i);
+}
+
+// Return handling
+function returnInput(i, val){
+  val = parseInt(val)||0;
+  if(val > products[i].sold){
+    alert("Not enough sold to return");
+    return;
+  }
+  products[i].return += val;
+  products[i].stock += val;
+  products[i].sold -= val;
+  products[i].qtySold -= val;
+  updateProductTotal(i);
+}
+
+function render(){
+  let html=`<table>
+    <tr>
+      <th>Name</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Qty Sold</th><th>Discount</th><th>Total</th><th>Actions</th>
+    </tr>`;
+  products.forEach((p,i)=>{
+    html+=`<tr>
+      <td><input type="text" value="${p.color}" oninput="products[${i}].color=this.value"></td>
+      <td><input type="text" value="${p.size}" oninput="products[${i}].size=this.value"></td>
+      <td><input type="number" value="${p.stock}" oninput="products[${i}].stock=parseInt(this.value)||0"></td>
+      <td><input type="number" value="0" placeholder="${p.sold}" oninput="sellInput(${i}, this.value)"></td>
+      <td><input type="number" value="0" placeholder="${p.return}" oninput="returnInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.price}" oninput="products[${i}].price=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td>${p.qtySold}</td>
+      <td><input type="number" value="${p.discount}" oninput="products[${i}].discount=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td>${(p.total||0).toFixed(2)}</td>
+      <td>
+        <button class="save" onclick="saveCalc(${i})">Save</button>
+        <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+        <button class="cancel" onclick="cancelCalc(${i})">Cancel</button>
+      </td>
+    </tr>`;
+  });
+  html+="</table>";
+  document.getElementById("list").innerHTML = html;
+  updateDashboard();
+  autoSave();
+}
+
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text("Panjabi Business Manager Report", 14, 15);
+  let rowY = 25;
+  doc.setFontSize(10);
+  products.forEach((p,i)=>{
+    let line = `#${i+1} ${p.color} ${p.size} Stock:${p.stock} Sold:${p.sold} Return:${p.return} Price:${p.price} Qty:${p.qtySold} Discount:${p.discount} Total:${p.total.toFixed(2)}`;
+    doc.text(line, 14, rowY);
+    rowY += 8;
+  });
+  doc.text(`Total Amount: ${totalAmountSaved.toFixed(2)}`, 14, rowY+5);
+  doc.save("Panjabi_Business_Report.pdf");
+}
+
+// Initial render
+render();
+</script>
+
+</body>
+</html>}
 
 function saveCalc(i){
   products[i].qtySold=0;
