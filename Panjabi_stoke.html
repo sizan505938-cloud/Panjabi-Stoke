@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Panjabi Business Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <style>
+    body {
+      font-family: Arial;
+      padding: 10px;
+      background: #eef2f3;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .dashboard {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 15px;
+    }
+
+    .box {
+      background: white;
+      padding: 10px;
+      border-radius: 10px;
+      width: 30%;
+      text-align: center;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .card {
+      background: white;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    button {
+      margin: 3px;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .sell { background: green; color: white; }
+    .return { background: orange; color: white; }
+    .resell { background: blue; color: white; }
+
+    .low {
+      color: red;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<h2>Panjabi Business Manager</h2>
+
+<div class="dashboard">
+  <div class="box">
+    <div>Total Stock</div>
+    <b id="totalStock">0</b>
+  </div>
+  <div class="box">
+    <div>Total Sold</div>
+    <b id="totalSold">0</b>
+  </div>
+  <div class="box">
+    <div>Total Return</div>
+    <b id="totalReturn">0</b>
+  </div>
+</div>
+
+<div id="list"></div>
+
+<script>
+
+// 🔥 Load from storage
+let products = JSON.parse(localStorage.getItem("products")) || [
+  {color:"Green", size:"M", stock:1, sold:0, return:0},
+  {color:"Green", size:"L", stock:1, sold:0, return:0},
+  {color:"Black", size:"L", stock:3, sold:0, return:0},
+  {color:"Pink", size:"XL", stock:2, sold:0, return:0}
+];
+
+function save(){
+  localStorage.setItem("products", JSON.stringify(products));
+}
+
+function render(){
+  let html = "";
+  let totalStock = 0;
+  let totalSold = 0;
+  let totalReturn = 0;
+
+  products.forEach((p,i)=>{
+
+    totalStock += p.stock;
+    totalSold += p.sold;
+    totalReturn += p.return;
+
+    html += `
+      <div class="card">
+        <b>${p.color} - ${p.size}</b><br>
+        Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
+        | Sold: ${p.sold} 
+        | Return: ${p.return}
+        <br>
+        <button class="sell" onclick="sell(${i})">Sell</button>
+        <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Resell</button>
+      </div>
+    `;
+  });
+
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+
+  save();
+}
+
+// 🔻 Actions
+
+function sell(i){
+  if(products[i].stock > 0){
+    products[i].stock--;
+    products[i].sold++;
+    render();
+  } else {
+    alert("No Stock!");
+  }
+}
+
+function addReturn(i){
+  products[i].stock++;
+  products[i].return++;
+  render();
+}
+
+function resell(i){
+  if(products[i].return > 0){
+    products[i].return--;
+    products[i].sold++;
+    render();
+  } else {
+    alert("No Return Stock!");
+  }
+}
+
+render();
+
+</script>
+
+</body>
+</html>
