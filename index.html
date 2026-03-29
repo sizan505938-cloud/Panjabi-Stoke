@@ -77,9 +77,36 @@ function updateDashboard(){
   document.getElementById("totalStock").innerText = totalStock;
   document.getElementById("totalSold").innerText = totalSold;
   document.getElementById("totalReturn").innerText = totalReturn;
-  document.getElementById("totalAmount}
+  document.getElementById("totalAmount").innerText = totalAmountSaved.toFixed(2);
+}
 
-// Save calculation
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value)||0;
+  let price=parseFloat(document.getElementById("newPrice").value)||0;
+  if(!color || !size){ alert("Enter Name and Size"); return; }
+  products.push({color,size,stock,sold:0,return:0,price,qtySold:0,discount:0,total:0});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  recalcTotalAmount();
+  autoSave(); render();
+}
+
+function updateProductTotal(i){
+  let p = products[i];
+  p.total = (p.price * p.qtySold) - (p.discount||0);
+  if(p.total < 0) p.total = 0;
+  recalcTotalAmount();
+}
+
+function recalcTotalAmount(){
+  totalAmountSaved=0;
+  products.forEach(p=>totalAmountSaved += parseFloat(p.total||0));
+}
+
 function saveCalc(i){
   products[i].qtySold=0;
   products[i].discount=0;
@@ -88,7 +115,6 @@ function saveCalc(i){
   autoSave(); render();
 }
 
-// Cancel calculation
 function cancelCalc(i){
   products[i].qtySold=0;
   products[i].discount=0;
@@ -97,7 +123,6 @@ function cancelCalc(i){
   autoSave(); render();
 }
 
-// Delete product
 function deleteProduct(i){
   products.splice(i,1);
   recalcTotalAmount();
@@ -105,7 +130,80 @@ function deleteProduct(i){
   render();
 }
 
-// Sell quantity input
+function sellInput(i, val){
+  val = parseInt(val)||0;
+  if(val > (parseInt(products[i].stock) + parseInt(products[i].qtySold))) {
+    alert("Not enough stock");
+    return;
+  }
+  let prevQty = products[i].qtySold;
+  products[i].qtySold = val;
+  products[i].stock = parseInt(products[i].stock) + prevQty - val;
+  products[i].sold = val;
+  updateProductTotal(i);
+}
+
+function returnInput(i, val){
+  val = parseInt(val)||0;
+  let prevReturn = products[i].return;
+  products[i].return = val;
+  products[i].stock = parseInt(products[i].stock) + (val - prevReturn);
+  products[i].sold = parseInt(products[i].sold) - (val - prevReturn);
+  updateProductTotal(i);
+}
+
+function render(){
+  let html=`<table>
+    <tr>
+      <th>Name</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Qty Sold</th><th>Discount</th><th>Total</th><th>Actions</th>
+    </tr>`;
+  products.forEach((p,i)=>{
+    html+=`<tr>
+      <td><input type="text" value="${p.color}" oninput="products[${i}].color=this.value"></td>
+      <td><input type="text" value="${p.size}" oninput="products[${i}].size=this.value"></td>
+      <td><input type="number" value="${p.stock}" oninput="products[${i}].stock=parseInt(this.value)||0"></td>
+      <td><input type="number" value="${p.sold}" oninput="sellInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.return}" oninput="returnInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.price}" oninput="products[${i}].price=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td><input type="number" value="${p.qtySold}" oninput="sellInput(${i}, this.value)"></td>
+      <td><input type="number" value="${p.discount}" oninput="products[${i}].discount=parseFloat(this.value)||0; updateProductTotal(${i})"></td>
+      <td>${(p.total||0).toFixed(2)}</td>
+      <td>
+        <button class="save" onclick="saveCalc(${i})">Save</button>
+        <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+        <button class="cancel" onclick="cancelCalc(${i})">Cancel</button>
+      </td>
+    </tr>`;
+  });
+  html+="</table>";
+  document.getElementById("list").innerHTML = html;
+  updateDashboard();
+  autoSave();
+}
+
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text("Panjabi Business Manager Report", 14, 15);
+  let rowY = 25;
+  doc.setFontSize(10);
+  products.forEach((p,i)=>{
+    let line = `#${i+1} ${p.color} ${p.size} Stock:${p.stock} Sold:${p.sold} Return:${p.return} Price:${p.price} Qty:${p.qtySold} Discount:${p.discount} Total:${p.total.toFixed(2)}`;
+    doc.text(line, 14, rowY);
+    rowY += 8;
+  });
+  doc.text(`\nTotal Amount: ${totalAmountSaved.toFixed(2)}`, 14, rowY+5);
+  doc.save("Panjabi_Business_Report.pdf");
+}
+
+// Initial render
+render();
+</script>
+
+</body>
+</html>// Sell quantity input
 function sellInput(i, val){
   val = parseInt(val)||0;
   if(val > (parseInt(products[i].stock) + parseInt(products[i].qtySold))) {
