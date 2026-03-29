@@ -18,6 +18,7 @@
     .resell { background: blue; color: white; }
     .cancel { background: red; color: white; }
     .save { background: purple; color: white; }
+    .delete { background: black; color: white; }
     .sky { background: skyblue; color: white; }
     .low { color: red; font-weight: bold; }
   </style>
@@ -51,7 +52,6 @@
   Size: <input type="text" id="newSize" placeholder="Size">
   Stock: <input type="number" id="newStock" placeholder="0" min="0">
   Price: <input type="number" id="newPrice" placeholder="Price" min="0">
-  Quantity: <input type="number" id="newQuantity" placeholder="Qty" min="0">
   <button class="sky" onclick="addProduct()">Add</button>
 </div>
 
@@ -70,9 +70,7 @@ function autoSave(){ localStorage.setItem("products", JSON.stringify(products));
 function calculateTotalAmount(){
   let total = 0;
   products.forEach(p=>{
-    let price = parseFloat(p.price)||0;
-    let quantity = parseInt(p.quantity)||0;
-    total += price * quantity;
+    total += (parseFloat(p.price||0) * parseInt(p.quantitySold||0));
   });
   document.getElementById("totalAmount").innerText = total.toFixed(2);
 }
@@ -82,30 +80,149 @@ function render(){
   let html = `<table>
     <tr>
       <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
-      <th>Price</th><th>Quantity</th><th>Total</th><th>Actions</th>
+      <th>Price</th><th>Quantity Sold</th><th>Total</th><th>Actions</th>
     </tr>`;
 
   products.forEach((p,i)=>{
     totalStock += p.stock;
     totalSold += p.sold;
     totalReturn += p.return;
-
-    let price = parseFloat(p.price)||0;
-    let quantity = parseInt(p.quantity)||0;
-    let totalPerProduct = price * quantity;
-
+    let totalPerProduct = (parseFloat(p.price||0) * parseInt(p.quantitySold||0));
     html += `<tr>
       <td>${p.color}</td>
       <td>${p.size}</td>
-      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
+      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}" onchange="updateStock(${i})"></td>
       <td>${p.sold}</td>
       <td>${p.return}</td>
       <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
-      <td><input type="number" id="quantityInput${i}" value="${p.quantity}" min="0" onchange="updateQuantity(${i})"></td>
+      <td><input type="number" id="quantityInput${i}" value="${p.quantitySold||0}" min="0" onchange="updateQuantity(${i})"></td>
       <td>${totalPerProduct.toFixed(2)}</td>
       <td>
         <button class="sell" onclick="sell(${i})">Sell</button>
         <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Return→Sold</button>
+        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateQuantity(${i});">Save</button>
+        <button class="delete" onclick="deleteProduct(${i})">Delete</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</table>`;
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  calculateTotalAmount();
+}
+
+// Actions
+function sell(i){ 
+  if(products[i].stock>0){ 
+    products[i].stock--; 
+    products[i].sold++; 
+    products[i].quantitySold++; // Auto update quantity
+    render(); 
+    autoSave(); 
+  } else alert("No Stock!"); 
+}
+
+function addReturn(i){ 
+  products[i].stock++; 
+  products[i].return++; 
+  if(products[i].quantitySold>0) products[i].quantitySold--; // Auto decrease quantity
+  render(); 
+  autoSave(); 
+}
+
+function resell(i){ 
+  if(products[i].return>0){ 
+    products[i].return--; 
+    products[i].sold++; 
+    products[i].quantitySold++; 
+    render(); 
+    autoSave(); 
+  } else alert("No Return Stock!"); 
+}
+
+function cancelSale(i){ 
+  if(products[i].sold>0){ 
+    products[i].sold--; 
+    if(products[i].quantitySold>0) products[i].quantitySold--;
+    products[i].stock++; 
+    render(); 
+    autoSave(); 
+  } else alert("No sale to cancel!"); 
+}
+
+function updateStock(i){
+  let val=document.getElementById("stockInput"+i).value;
+  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); calculateTotalAmount(); }
+}
+function updatePrice(i){
+  let val=document.getElementById("priceInput"+i).value;
+  products[i].price=parseFloat(val) || 0;
+  render(); autoSave(); calculateTotalAmount();
+}
+function updateQuantity(i){
+  let val=document.getElementById("quantityInput"+i).value;
+  products[i].quantitySold=parseInt(val) || 0;
+  render(); autoSave(); calculateTotalAmount();
+}
+
+// Add Product
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value) || 0;
+  let price=parseFloat(document.getElementById("newPrice").value) || 0;
+  if(color==="" || size===""){ alert("Color and Size required!"); return; }
+  products.push({color,size,stock,sold:0,return:0,price,quantitySold:0});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  render(); autoSave();
+}
+
+// Delete Product
+function deleteProduct(i){
+  if(confirm("Are you sure you want to delete this product?")){
+    products.splice(i,1);
+    render(); autoSave();
+  }
+}
+
+// PDF Download
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 10;
+  doc.setFontSize(12);
+  doc.text("Panjabi Business Manager Report", 10, y);
+  y += 10;
+
+  products.forEach(p=>{
+    let totalPerProduct = (parseFloat(p.price||0) * parseInt(p.quantitySold||0));
+    let line = `${p.color} - ${p.size} | Stock: ${p.stock} | Sold: ${p.sold} | Return: ${p.return} | Price: ${p.price.toFixed(2)} | Qty Sold: ${p.quantitySold} | Total: ${totalPerProduct.toFixed(2)}`;
+    doc.text(line, 10, y);
+    y += 7;
+    if(y > 280){ doc.addPage(); y = 10; }
+  });
+
+  let total = products.reduce((acc,p)=>{
+    return acc + (parseFloat(p.price||0) * parseInt(p.quantitySold||0));
+  },0);
+  y += 10;
+  doc.text("Total Amount: " + total.toFixed(2), 10, y);
+
+  doc.save("Panjabi_Report.pdf");
+}
+
+render();
+</script>
+</body>
+</html>        <button class="return" onclick="addReturn(${i})">Return</button>
         <button class="resell" onclick="resell(${i})">Return→Sold</button>
         <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
         <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateQuantity(${i});">Save</button>
