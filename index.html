@@ -31,10 +31,10 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
 
-    input {
-      width: 60px;
+    input, select {
+      width: 80px;
       padding: 5px;
-      margin-top: 5px;
+      margin: 5px;
     }
 
     button {
@@ -51,6 +51,7 @@
     .resell { background: blue; color: white; }
     .cancel { background: red; color: white; }
     .save { background: purple; color: white; }
+    .sky { background: skyblue; color: white; }
 
     .low { color: red; font-weight: bold; }
   </style>
@@ -75,22 +76,29 @@
   </div>
 </div>
 
+<!-- New Product Input -->
+<div class="card">
+  <b>Add New Product</b><br>
+  Color: <input type="text" id="newColor" placeholder="Color">
+  Size: <input type="text" id="newSize" placeholder="Size">
+  Stock: <input type="number" id="newStock" placeholder="0" min="0">
+  <button class="sky" onclick="addProduct()">Add</button>
+</div>
+
 <div id="list"></div>
 
 <script>
-
-// 🔥 Initial Data
+// 🔥 Initial Data - সব শূন্য
 let products = JSON.parse(localStorage.getItem("products")) || [
-  {color:"Green", size:"M", stock:1, sold:5, return:0},
-  {color:"Green", size:"L", stock:1, sold:6, return:0},
-  {color:"Black", size:"L", stock:3, sold:10, return:1},
-  {color:"Pink", size:"XL", stock:3, sold:6, return:0}
+  {color:"Green", size:"M", stock:0, sold:0, return:0},
+  {color:"Green", size:"L", stock:0, sold:0, return:0},
+  {color:"Black", size:"L", stock:0, sold:0, return:0},
+  {color:"Pink", size:"XL", stock:0, sold:0, return:0}
 ];
 
-// 🔻 Save function
-function save(){
+// 🔻 Auto Save
+function autoSave(){
   localStorage.setItem("products", JSON.stringify(products));
-  alert("Saved Successfully ✅");
 }
 
 // 🔻 Render UI
@@ -101,7 +109,6 @@ function render(){
   let totalReturn = 0;
 
   products.forEach((p,i)=>{
-
     totalStock += p.stock;
     totalSold += p.sold;
     totalReturn += p.return;
@@ -115,10 +122,9 @@ function render(){
         | Return: ${p.return}
         <br>
 
-        <input type="number" id="stockInput${i}" placeholder="New Stock">
+        <input type="number" id="stockInput${i}" placeholder="New Stock" min="0">
 
         <br>
-
         <button class="sell" onclick="sell(${i})">Sell</button>
         <button class="return" onclick="addReturn(${i})">Return</button>
         <button class="resell" onclick="resell(${i})">Resell</button>
@@ -135,21 +141,20 @@ function render(){
 }
 
 // 🔻 Actions
-
 function sell(i){
   if(products[i].stock > 0){
     products[i].stock--;
     products[i].sold++;
     render();
-  } else {
-    alert("No Stock!");
-  }
+    autoSave();
+  } else { alert("No Stock!"); }
 }
 
 function addReturn(i){
   products[i].stock++;
   products[i].return++;
   render();
+  autoSave();
 }
 
 function resell(i){
@@ -157,9 +162,8 @@ function resell(i){
     products[i].return--;
     products[i].sold++;
     render();
-  } else {
-    alert("No Return Stock!");
-  }
+    autoSave();
+  } else { alert("No Return Stock!"); }
 }
 
 function cancelSale(i){
@@ -167,23 +171,41 @@ function cancelSale(i){
     products[i].sold--;
     products[i].stock++;
     render();
-  } else {
-    alert("No sale to cancel!");
+    autoSave();
+  } else { alert("No sale to cancel!"); }
+}
+
+// 🔻 Manual Stock Change
+function updateStock(i){
+  let newStock = document.getElementById("stockInput"+i).value;
+  if(newStock !== "" && !isNaN(newStock)){
+    products[i].stock = Math.max(0, parseInt(newStock));
+    render();
+    autoSave();
   }
 }
 
-// 🔥 Manual Stock Change
-function updateStock(i){
-  let newStock = document.getElementById("stockInput"+i).value;
-  if(newStock !== ""){
-    products[i].stock = parseInt(newStock);
-    render();
+// 🔻 Add New Product
+function addProduct(){
+  let color = document.getElementById("newColor").value.trim();
+  let size = document.getElementById("newSize").value.trim();
+  let stock = parseInt(document.getElementById("newStock").value) || 0;
+
+  if(color === "" || size === ""){
+    alert("Color and Size are required!");
+    return;
   }
+
+  products.push({color, size, stock, sold:0, return:0});
+  document.getElementById("newColor").value = "";
+  document.getElementById("newSize").value = "";
+  document.getElementById("newStock").value = "";
+  render();
+  autoSave();
 }
 
 // First Load
 render();
-
 </script>
 
 </body>
