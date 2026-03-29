@@ -17,7 +17,7 @@
       background: white;
       padding: 10px;
       border-radius: 10px;
-      width: 30%;
+      width: 22%;
       text-align: center;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
@@ -82,6 +82,10 @@
     <div>Total Return</div>
     <b id="totalReturn">0</b>
   </div>
+  <div class="box">
+    <div>Total Amount</div>
+    <b id="totalAmount">0</b>
+  </div>
 </div>
 
 <!-- New Product Input -->
@@ -99,13 +103,99 @@
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
 
-function autoSave(){
-  localStorage.setItem("products", JSON.stringify(products));
+function autoSave(){ localStorage.setItem("products", JSON.stringify(products)); }
+
+function calculateTotalAmount(){
+  let total = 0;
+  products.forEach(p=>{
+    let price = parseFloat(p.price)||0;
+    total += p.stock * price;
+  });
+  document.getElementById("totalAmount").innerText = total.toFixed(2);
 }
 
 function render(){
   let totalStock=0, totalSold=0, totalReturn=0;
   let html = `<table>
+    <tr>
+      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
+      <th>Price</th><th>Discount/Account</th><th>Actions</th>
+    </tr>`;
+
+  products.forEach((p,i)=>{
+    totalStock += p.stock;
+    totalSold += p.sold;
+    totalReturn += p.return;
+
+    html += `<tr>
+      <td>${p.color}</td>
+      <td>${p.size}</td>
+      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
+      <td>${p.sold}</td>
+      <td>${p.return}</td>
+      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0"></td>
+      <td><input type="text" id="discountInput${i}" value="${p.discount||''}" placeholder="Discount/Account"></td>
+      <td>
+        <button class="sell" onclick="sell(${i})">Sell</button>
+        <button class="return" onclick="addReturn(${i})">Return</button>
+        <button class="resell" onclick="resell(${i})">Return→Sold</button>
+        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
+        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateDiscount(${i});">Save</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</table>`;
+  document.getElementById("list").innerHTML = html;
+  document.getElementById("totalStock").innerText = totalStock;
+  document.getElementById("totalSold").innerText = totalSold;
+  document.getElementById("totalReturn").innerText = totalReturn;
+  calculateTotalAmount();
+}
+
+// Actions
+function sell(i){
+  if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); }
+  else alert("No Stock!");
+}
+function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
+function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
+function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
+
+function updateStock(i){
+  let val=document.getElementById("stockInput"+i).value;
+  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); }
+}
+function updatePrice(i){
+  let val=document.getElementById("priceInput"+i).value;
+  products[i].price=val; render(); autoSave();
+}
+function updateDiscount(i){
+  let val=document.getElementById("discountInput"+i).value;
+  products[i].discount=val; autoSave();
+}
+
+// Add Product
+function addProduct(){
+  let color=document.getElementById("newColor").value.trim();
+  let size=document.getElementById("newSize").value.trim();
+  let stock=parseInt(document.getElementById("newStock").value) || 0;
+  let price=document.getElementById("newPrice").value || "";
+
+  if(color==="" || size===""){ alert("Color and Size required!"); return; }
+
+  products.push({color,size,stock,sold:0,return:0,price,discount:""});
+  document.getElementById("newColor").value="";
+  document.getElementById("newSize").value="";
+  document.getElementById("newStock").value="";
+  document.getElementById("newPrice").value="";
+  render(); autoSave();
+}
+
+render();
+</script>
+</body>
+</html>  let html = `<table>
     <tr>
       <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th><th>Price</th><th>Actions</th>
     </tr>`;
