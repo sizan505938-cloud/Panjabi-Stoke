@@ -181,38 +181,7 @@ function downloadPDF(){
 render();
 </script>
 </body>
-</html>  let total = 0;
-  products.forEach(p=>{
-    let price = parseFloat(p.price) || 0;
-    let discount = parseFloat(p.discount) || 0;
-    let finalAmount = (p.stock * price) - discount;
-    total += finalAmount;
-  });
-  document.getElementById("totalAmount").innerText = total.toFixed(2);
-}
-
-function render(){
-  let totalStock=0, totalSold=0, totalReturn=0;
-  let html = `<table>
-    <tr>
-      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
-      <th>Price</th><th>Discount/Account</th><th>Final Amount</th><th>Actions</th>
-    </tr>`;
-
-  products.forEach((p,i)=>{
-    totalStock += p.stock;
-    totalSold += p.sold;
-    totalReturn += p.return;
-
-    let price = parseFloat(p.price)||0;
-    let discount = parseFloat(p.discount)||0;
-    let finalAmount = (p.stock * price) - discount;
-
-    html += `<tr>
-      <td>${p.color}</td>
-      <td>${p.size}</td>
-      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
-      <td>${p.sold}</td>
+</html>      <td>${p.sold}</td>
       <td>${p.return}</td>
       <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
       <td><input type="number" id="discountInput${i}" value="${p.discount||0}" placeholder="Discount/Account" onchange="updateDiscount(${i})"></td>
