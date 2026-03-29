@@ -51,6 +51,7 @@
   Size: <input type="text" id="newSize" placeholder="Size">
   Stock: <input type="number" id="newStock" placeholder="0" min="0">
   Price: <input type="number" id="newPrice" placeholder="Price" min="0">
+  Quantity: <input type="number" id="newQuantity" placeholder="Qty" min="0">
   <button class="sky" onclick="addProduct()">Add</button>
 </div>
 
@@ -70,8 +71,8 @@ function calculateTotalAmount(){
   let total = 0;
   products.forEach(p=>{
     let price = parseFloat(p.price)||0;
-    let totalPerProduct = p.stock * price;
-    total += totalPerProduct;
+    let quantity = parseInt(p.quantity)||0;
+    total += price * quantity;
   });
   document.getElementById("totalAmount").innerText = total.toFixed(2);
 }
@@ -81,7 +82,7 @@ function render(){
   let html = `<table>
     <tr>
       <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
-      <th>Price</th><th>Total</th><th>Actions</th>
+      <th>Price</th><th>Quantity</th><th>Total</th><th>Actions</th>
     </tr>`;
 
   products.forEach((p,i)=>{
@@ -90,7 +91,8 @@ function render(){
     totalReturn += p.return;
 
     let price = parseFloat(p.price)||0;
-    let totalPerProduct = p.stock * price;
+    let quantity = parseInt(p.quantity)||0;
+    let totalPerProduct = price * quantity;
 
     html += `<tr>
       <td>${p.color}</td>
@@ -99,13 +101,14 @@ function render(){
       <td>${p.sold}</td>
       <td>${p.return}</td>
       <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
+      <td><input type="number" id="quantityInput${i}" value="${p.quantity}" min="0" onchange="updateQuantity(${i})"></td>
       <td>${totalPerProduct.toFixed(2)}</td>
       <td>
         <button class="sell" onclick="sell(${i})">Sell</button>
         <button class="return" onclick="addReturn(${i})">Return</button>
         <button class="resell" onclick="resell(${i})">Return→Sold</button>
         <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i}); updatePrice(${i});">Save</button>
+        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateQuantity(${i});">Save</button>
       </td>
     </tr>`;
   });
@@ -133,6 +136,11 @@ function updatePrice(i){
   products[i].price=parseFloat(val) || 0;
   render(); autoSave(); calculateTotalAmount();
 }
+function updateQuantity(i){
+  let val=document.getElementById("quantityInput"+i).value;
+  products[i].quantity=parseInt(val) || 0;
+  render(); autoSave(); calculateTotalAmount();
+}
 
 // Add Product
 function addProduct(){
@@ -140,14 +148,16 @@ function addProduct(){
   let size=document.getElementById("newSize").value.trim();
   let stock=parseInt(document.getElementById("newStock").value) || 0;
   let price=parseFloat(document.getElementById("newPrice").value) || 0;
+  let quantity=parseInt(document.getElementById("newQuantity").value) || 0;
 
   if(color==="" || size===""){ alert("Color and Size required!"); return; }
 
-  products.push({color,size,stock,sold:0,return:0,price});
+  products.push({color,size,stock,sold:0,return:0,price,quantity});
   document.getElementById("newColor").value="";
   document.getElementById("newSize").value="";
   document.getElementById("newStock").value="";
   document.getElementById("newPrice").value="";
+  document.getElementById("newQuantity").value="";
   render(); autoSave();
 }
 
@@ -162,15 +172,16 @@ function downloadPDF(){
 
   products.forEach(p=>{
     let price = parseFloat(p.price)||0;
-    let totalPerProduct = p.stock * price;
-    let line = `${p.color} - ${p.size} | Stock: ${p.stock} | Sold: ${p.sold} | Return: ${p.return} | Price: ${price.toFixed(2)} | Total: ${totalPerProduct.toFixed(2)}`;
+    let quantity = parseInt(p.quantity)||0;
+    let totalPerProduct = price * quantity;
+    let line = `${p.color} - ${p.size} | Stock: ${p.stock} | Sold: ${p.sold} | Return: ${p.return} | Price: ${price.toFixed(2)} | Qty: ${quantity} | Total: ${totalPerProduct.toFixed(2)}`;
     doc.text(line, 10, y);
     y += 7;
     if(y > 280){ doc.addPage(); y = 10; }
   });
 
   let total = products.reduce((acc,p)=>{
-    return acc + (p.stock * parseFloat(p.price||0));
+    return acc + (parseFloat(p.price||0) * parseInt(p.quantity||0));
   },0);
   y += 10;
   doc.text("Total Amount: " + total.toFixed(2), 10, y);
@@ -180,447 +191,5 @@ function downloadPDF(){
 
 render();
 </script>
-</body>
-</html>      <td>${p.sold}</td>
-      <td>${p.return}</td>
-      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0" onchange="updatePrice(${i})"></td>
-      <td><input type="number" id="discountInput${i}" value="${p.discount||0}" placeholder="Discount/Account" onchange="updateDiscount(${i})"></td>
-      <td>${finalAmount.toFixed(2)}</td>
-      <td>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Return→Sold</button>
-        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateDiscount(${i});">Save</button>
-      </td>
-    </tr>`;
-  });
-
-  html += `</table>`;
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-  calculateTotalAmount();
-}
-
-// Actions
-function sell(i){
-  if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); }
-  else alert("No Stock!");
-}
-function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
-function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
-function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
-
-function updateStock(i){
-  let val=document.getElementById("stockInput"+i).value;
-  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); calculateTotalAmount(); }
-}
-function updatePrice(i){
-  let val=document.getElementById("priceInput"+i).value;
-  products[i].price=parseFloat(val) || 0;
-  render(); autoSave();
-  calculateTotalAmount();
-}
-function updateDiscount(i){
-  let val=document.getElementById("discountInput"+i).value;
-  products[i].discount=parseFloat(val)||0;
-  render(); autoSave();
-  calculateTotalAmount();
-}
-
-// Add Product
-function addProduct(){
-  let color=document.getElementById("newColor").value.trim();
-  let size=document.getElementById("newSize").value.trim();
-  let stock=parseInt(document.getElementById("newStock").value) || 0;
-  let price=parseFloat(document.getElementById("newPrice").value) || 0;
-
-  if(color==="" || size===""){ alert("Color and Size required!"); return; }
-
-  products.push({color,size,stock,sold:0,return:0,price,discount:0});
-  document.getElementById("newColor").value="";
-  document.getElementById("newSize").value="";
-  document.getElementById("newStock").value="";
-  document.getElementById("newPrice").value="";
-  render(); autoSave();
-}
-
-render();
-</script>
-</body>
-</html>function calculateTotalAmount(){
-  let total = 0;
-  products.forEach(p=>{
-    let price = parseFloat(p.price)||0;
-    total += p.stock * price;
-  });
-  document.getElementById("totalAmount").innerText = total.toFixed(2);
-}
-
-function render(){
-  let totalStock=0, totalSold=0, totalReturn=0;
-  let html = `<table>
-    <tr>
-      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th>
-      <th>Price</th><th>Discount/Account</th><th>Actions</th>
-    </tr>`;
-
-  products.forEach((p,i)=>{
-    totalStock += p.stock;
-    totalSold += p.sold;
-    totalReturn += p.return;
-
-    html += `<tr>
-      <td>${p.color}</td>
-      <td>${p.size}</td>
-      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
-      <td>${p.sold}</td>
-      <td>${p.return}</td>
-      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0"></td>
-      <td><input type="text" id="discountInput${i}" value="${p.discount||''}" placeholder="Discount/Account"></td>
-      <td>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Return→Sold</button>
-        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i}); updatePrice(${i}); updateDiscount(${i});">Save</button>
-      </td>
-    </tr>`;
-  });
-
-  html += `</table>`;
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-  calculateTotalAmount();
-}
-
-// Actions
-function sell(i){
-  if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); }
-  else alert("No Stock!");
-}
-function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
-function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
-function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
-
-function updateStock(i){
-  let val=document.getElementById("stockInput"+i).value;
-  if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); }
-}
-function updatePrice(i){
-  let val=document.getElementById("priceInput"+i).value;
-  products[i].price=val; render(); autoSave();
-}
-function updateDiscount(i){
-  let val=document.getElementById("discountInput"+i).value;
-  products[i].discount=val; autoSave();
-}
-
-// Add Product
-function addProduct(){
-  let color=document.getElementById("newColor").value.trim();
-  let size=document.getElementById("newSize").value.trim();
-  let stock=parseInt(document.getElementById("newStock").value) || 0;
-  let price=document.getElementById("newPrice").value || "";
-
-  if(color==="" || size===""){ alert("Color and Size required!"); return; }
-
-  products.push({color,size,stock,sold:0,return:0,price,discount:""});
-  document.getElementById("newColor").value="";
-  document.getElementById("newSize").value="";
-  document.getElementById("newStock").value="";
-  document.getElementById("newPrice").value="";
-  render(); autoSave();
-}
-
-render();
-</script>
-</body>
-</html>  let html = `<table>
-    <tr>
-      <th>Color</th><th>Size</th><th>Stock</th><th>Sold</th><th>Return</th><th>Price</th><th>Actions</th>
-    </tr>`;
-
-  products.forEach((p,i)=>{
-    totalStock += p.stock;
-    totalSold += p.sold;
-    totalReturn += p.return;
-
-    html += `<tr>
-      <td>${p.color}</td>
-      <td>${p.size}</td>
-      <td><input type="number" id="stockInput${i}" value="${p.stock}" min="0" class="${p.stock<=1?'low':''}"></td>
-      <td>${p.sold}</td>
-      <td>${p.return}</td>
-      <td><input type="number" id="priceInput${i}" value="${p.price}" min="0"></td>
-      <td>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Return→Sold</button>
-        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i}); updatePrice(${i})">Save</button>
-      </td>
-    </tr>`;
-  });
-
-  html += `</table>`;
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-}
-
-// Actions
-function sell(i){
-  if(products[i].stock>0){ products[i].stock--; products[i].sold++; render(); autoSave(); }
-  else alert("No Stock!");
-}
-function addReturn(i){ products[i].stock++; products[i].return++; render(); autoSave(); }
-function resell(i){ if(products[i].return>0){ products[i].return--; products[i].sold++; render(); autoSave(); } else alert("No Return Stock!"); }
-function cancelSale(i){ if(products[i].sold>0){ products[i].sold--; products[i].stock++; render(); autoSave(); } else alert("No sale to cancel!"); }
-function updateStock(i){ let val=document.getElementById("stockInput"+i).value; if(val!=="" && !isNaN(val)){ products[i].stock=parseInt(val); render(); autoSave(); } }
-function updatePrice(i){ let val=document.getElementById("priceInput"+i).value; products[i].price=val; autoSave(); }
-
-function addProduct(){
-  let color=document.getElementById("newColor").value.trim();
-  let size=document.getElementById("newSize").value.trim();
-  let stock=parseInt(document.getElementById("newStock").value) || 0;
-  let price=document.getElementById("newPrice").value || "";
-
-  if(color==="" || size===""){ alert("Color and Size required!"); return; }
-
-  products.push({color,size,stock,sold:0,return:0,price});
-  document.getElementById("newColor").value="";
-  document.getElementById("newSize").value="";
-  document.getElementById("newStock").value="";
-  document.getElementById("newPrice").value="";
-  render(); autoSave();
-}
-
-render();
-</script>
-</body>
-</html>  let totalStock = 0;
-  let totalSold = 0;
-  let totalReturn = 0;
-
-  products.forEach((p,i)=>{
-    totalStock += p.stock;
-    totalSold += p.sold;
-    totalReturn += p.return;
-
-    html += `
-      <div class="card">
-        <b>${p.color} - ${p.size}</b><br>
-
-        Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
-        | Sold: ${p.sold} 
-        | Return: ${p.return} 
-        | Price: <input type="number" id="priceInput${i}" placeholder="Price" value="${p.price}" min="0">
-        <br>
-
-        <input type="number" id="stockInput${i}" placeholder="New Stock" min="0">
-
-        <br>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Resell</button>
-        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i}); updatePrice(${i})">Set Stock & Price</button>
-      </div>
-    `;
-  });
-
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-}
-
-// 🔻 Actions
-function sell(i){
-  if(products[i].stock > 0){
-    products[i].stock--;
-    products[i].sold++;
-    render();
-    autoSave();
-  } else { alert("No Stock!"); }
-}
-
-function addReturn(i){
-  products[i].stock++;
-  products[i].return++;
-  render();
-  autoSave();
-}
-
-function resell(i){
-  if(products[i].return > 0){
-    products[i].return--;
-    products[i].sold++;
-    render();
-    autoSave();
-  } else { alert("No Return Stock!"); }
-}
-
-function cancelSale(i){
-  if(products[i].sold > 0){
-    products[i].sold--;
-    products[i].stock++;
-    render();
-    autoSave();
-  } else { alert("No sale to cancel!"); }
-}
-
-// 🔻 Manual Stock Change
-function updateStock(i){
-  let newStock = document.getElementById("stockInput"+i).value;
-  if(newStock !== "" && !isNaN(newStock)){
-    products[i].stock = Math.max(0, parseInt(newStock));
-    render();
-    autoSave();
-  }
-}
-
-// 🔻 Update Price
-function updatePrice(i){
-  let newPrice = document.getElementById("priceInput"+i).value;
-  products[i].price = newPrice;
-  autoSave();
-}
-
-// 🔻 Add New Product
-function addProduct(){
-  let color = document.getElementById("newColor").value.trim();
-  let size = document.getElementById("newSize").value.trim();
-  let stock = parseInt(document.getElementById("newStock").value) || 0;
-  let price = document.getElementById("newPrice").value || "";
-
-  if(color === "" || size === ""){
-    alert("Color and Size are required!");
-    return;
-  }
-
-  products.push({color, size, stock, sold:0, return:0, price});
-  document.getElementById("newColor").value = "";
-  document.getElementById("newSize").value = "";
-  document.getElementById("newStock").value = "";
-  document.getElementById("newPrice").value = "";
-  render();
-  autoSave();
-}
-
-// First Load
-render();
-</script>
-
-</body>
-</html>  let totalSold = 0;
-  let totalReturn = 0;
-
-  products.forEach((p,i)=>{
-    totalStock += p.stock;
-    totalSold += p.sold;
-    totalReturn += p.return;
-
-    html += `
-      <div class="card">
-        <b>${p.color} - ${p.size}</b><br>
-
-        Stock: <span class="${p.stock <=1 ? 'low':''}">${p.stock}</span> 
-        | Sold: ${p.sold} 
-        | Return: ${p.return}
-        <br>
-
-        <input type="number" id="stockInput${i}" placeholder="New Stock" min="0">
-
-        <br>
-        <button class="sell" onclick="sell(${i})">Sell</button>
-        <button class="return" onclick="addReturn(${i})">Return</button>
-        <button class="resell" onclick="resell(${i})">Resell</button>
-        <button class="cancel" onclick="cancelSale(${i})">Cancel</button>
-        <button class="save" onclick="updateStock(${i})">Set Stock</button>
-      </div>
-    `;
-  });
-
-  document.getElementById("list").innerHTML = html;
-  document.getElementById("totalStock").innerText = totalStock;
-  document.getElementById("totalSold").innerText = totalSold;
-  document.getElementById("totalReturn").innerText = totalReturn;
-}
-
-// 🔻 Actions
-function sell(i){
-  if(products[i].stock > 0){
-    products[i].stock--;
-    products[i].sold++;
-    render();
-    autoSave();
-  } else { alert("No Stock!"); }
-}
-
-function addReturn(i){
-  products[i].stock++;
-  products[i].return++;
-  render();
-  autoSave();
-}
-
-function resell(i){
-  if(products[i].return > 0){
-    products[i].return--;
-    products[i].sold++;
-    render();
-    autoSave();
-  } else { alert("No Return Stock!"); }
-}
-
-function cancelSale(i){
-  if(products[i].sold > 0){
-    products[i].sold--;
-    products[i].stock++;
-    render();
-    autoSave();
-  } else { alert("No sale to cancel!"); }
-}
-
-// 🔻 Manual Stock Change
-function updateStock(i){
-  let newStock = document.getElementById("stockInput"+i).value;
-  if(newStock !== "" && !isNaN(newStock)){
-    products[i].stock = Math.max(0, parseInt(newStock));
-    render();
-    autoSave();
-  }
-}
-
-// 🔻 Add New Product
-function addProduct(){
-  let color = document.getElementById("newColor").value.trim();
-  let size = document.getElementById("newSize").value.trim();
-  let stock = parseInt(document.getElementById("newStock").value) || 0;
-
-  if(color === "" || size === ""){
-    alert("Color and Size are required!");
-    return;
-  }
-
-  products.push({color, size, stock, sold:0, return:0});
-  document.getElementById("newColor").value = "";
-  document.getElementById("newSize").value = "";
-  document.getElementById("newStock").value = "";
-  render();
-  autoSave();
-}
-
-// First Load
-render();
-</script>
-
 </body>
 </html>
